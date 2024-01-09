@@ -6,7 +6,7 @@ JAVA_HOME=/usr/lib/jvm/default-java/
 export JAVA_HOME=$JAVA_HOME
 
 ERROR() {
-    echo $@
+    echo $1
     exit 1
 }
 
@@ -17,8 +17,8 @@ SECRET() {
 
 BIN() {
     local bin=$WORK_DIR/$1/bin/$1
-    [[ -f $bin ]] || ERROR Unable to find $bin!
-    [[ -x $bin ]] || ERROR $bin is not an executable!
+    [[ -f $bin ]] || ERROR "Unable to find $bin!"
+    [[ -x $bin ]] || ERROR "$bin is not an executable!"
     echo $bin
 }
 
@@ -66,7 +66,7 @@ MAIN() {
 }
 
 
-[[ -n $WORK_DIR ]] && echo "Using WORK_DIR: ${WORK_DIR}" || ERROR Invalid WORK_DIR ENV!
+[[ -n $WORK_DIR ]] && echo "Using WORK_DIR: ${WORK_DIR}" || ERROR "Invalid WORK_DIR ENV!"
 
 JWT_SECRET=$WORKDIR/$JWT_SECRET
 
