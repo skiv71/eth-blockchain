@@ -35,4 +35,8 @@ COPY . .
 
 RUN chmod +x *.sh
 
+EXPOSE 8545
+EXPOSE 30303
+EXPOSE 30303/udp
+
 ENTRYPOINT [ "./entrypoint.sh" ]
