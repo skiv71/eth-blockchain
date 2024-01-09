@@ -31,6 +31,8 @@ RUN wget ${TEKU} \
     && ln -s ${WORKING}/teku* ${WORKING}/teku \
     && rm -rf *.zip
 
+WORKDIR ${WORKING}
+
 COPY . .
 
 RUN chmod +x *.sh
