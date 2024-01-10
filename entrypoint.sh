@@ -1,6 +1,6 @@
 #!/bin/bash
 
-JWT_SECRET="jwtsecret.hex"
+JWT_FILE="jwtsecret.hex"
 JAVA_HOME=/usr/lib/jvm/default-java/
 
 export JAVA_HOME=$JAVA_HOME
@@ -15,49 +15,47 @@ SECRET() {
     openssl rand -hex 32 | tr -d "\n" > $1
 }
 
-BIN() {
-    local bin=$WORK_DIR/$1/bin/$1
-    [[ -f $bin ]] || ERROR "Unable to find $bin!"
-    [[ -x $bin ]] || ERROR "$bin is not an executable!"
-    echo $bin
-}
-
 BESU() {
-    local bin=`BIN besu`
-    echo "Starting BESU..."
-    $bin \
-        --network=goerli            \
-        --rpc-http-enabled=true     \
-        --rpc-http-host=0.0.0.0     \
+    echo "Starting BESU, network: $1, data: $2"
+    besu \
+        --network=$1 \
+        --rpc-http-enabled=true \
+        --rpc-http-host=0.0.0.0 \
         --rpc-http-cors-origins="*" \
-        --rpc-ws-enabled=true       \
-        --rpc-ws-host=0.0.0.0       \
-        --host-allowlist="*"        \
+        --rpc-ws-enabled=true \
+        --rpc-ws-host=0.0.0.0 \
+        --host-allowlist="*" \
         --engine-host-allowlist="*" \
-        --engine-rpc-enabled        \
-        --engine-jwt-secret=$1 &
+        --engine-rpc-enabled \
+        --data-path=$2 \
+        --engine-jwt-secret=$3 &
     while ! netcat -z localhost 8545; do
         sleep 1
     done
 }
 
 TEKU() {
-    local bin=`BIN teku`
-    echo "Starting TEKU..."
-    $bin \
-    --network=goerli \
+    echo "Starting TEKU, network: $1, data: $2"
+    teku \
+    --network=$1 \
     --ee-endpoint=http://localhost:8551 \
-    --ee-jwt-secret-file=$1 \
+    --data-base-path=$2 \
+    --ee-jwt-secret-file=$3 \
     --metrics-enabled=true \
     --rest-api-enabled=true \
     --ignore-weak-subjectivity-period-enabled
 }
 
+MKDIR() {
+    echo "Creating $1..."
+    mkdir -p $1
+}
+
 MAIN() {
     case $1 in
         "goerli")
-            BESU $JWT_SECRET
-            TEKU $JWT_SECRET
+            BESU $1 $2/besu $3
+            TEKU $1 $2/teku $3
             ;;
         *)
             ERROR "Invalid ETH_NETWORK: $1!"
@@ -65,11 +63,12 @@ MAIN() {
     esac
 }
 
+[[ -n $DATA_DIR ]] || ERROR "Empty DATA_DIR ENV!"
 
-[[ -n $WORK_DIR ]] && echo "Using WORK_DIR: ${WORK_DIR}" || ERROR "Invalid WORK_DIR ENV!"
+[[ -d $DATA_DIR ]] && echo "Using DATA_DIR: $DATA_DIR..." || MKDIR $DATA_DIR 
 
-JWT_SECRET=$WORK_DIR/$JWT_SECRET
+JWT_PATH=$DATA_DIR/$JWT_FILE
 
-[[ -f $JWT_SECRET ]] || SECRET $JWT_SECRET
+[[ -f $JWT_PATH ]] || SECRET $JWT_PATH
 
-MAIN $ETH_NETWORK $JWT_SECRET
+MAIN $ETH_NETWORK $DATA_DIR $JWT_PATH

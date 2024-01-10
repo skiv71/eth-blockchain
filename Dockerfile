@@ -2,36 +2,36 @@ FROM debian:12-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
-ENV WORK_DIR=/opt/hyperledger
+ENV DATA_DIR=/data/hyperledger
 ENV ETH_NETWORK=goerli
 
-ARG DEPS="wget ca-certificates net-tools netcat-traditional default-jdk unzip libjemalloc-dev"
-ARG TMP="/tmp"
-ARG WORKING=${WORK_DIR}
-ARG TEKU="https://artifacts.consensys.net/public/teku/raw/names/teku.zip/versions/23.12.1/teku-23.12.1.zip"
-ARG BESU="https://hyperledger.jfrog.io/artifactory/besu-binaries/besu/23.10.3/besu-23.10.3.zip"
+ARG APT_DEPS="wget ca-certificates net-tools netcat-traditional default-jdk unzip libjemalloc-dev"
+ARG APP_DIR=/opt/hyperledger
+ARG TEKU_URL="https://artifacts.consensys.net/public/teku/raw/names/teku.zip/versions/23.12.1/teku-23.12.1.zip"
+ARG BESU_URL="https://hyperledger.jfrog.io/artifactory/besu-binaries/besu/23.10.3/besu-23.10.3.zip"
+ARG WORK_DIR=/opt/docker
+ARG BIN=/usr/local/bin
 
 SHELL ["/bin/bash", "-c"]
 
-WORKDIR ${WORKING}
-
-WORKDIR ${TMP}
-
 RUN apt-get update >/dev/null && \
-    apt-get install -y --no-install-recommends ${DEPS} &>/dev/null && \
+    apt-get install -y --no-install-recommends ${APT_DEPS} &>/dev/null && \
     apt-get clean
 
-RUN wget ${BESU} \
-    && unzip *.zip -d ${WORKING} \
-    && ln -s ${WORKING}/besu* ${WORKING}/besu \
-    && rm -rf *.zip
+WORKDIR ${APP_DIR}
 
-RUN wget ${TEKU} \
-    && unzip *.zip -d ${WORKING} \
-    && ln -s ${WORKING}/teku* ${WORKING}/teku \
-    && rm -rf *.zip
+WORKDIR /tmp
 
-WORKDIR ${WORKING}
+RUN wget ${BESU_URL} \
+    && wget ${TEKU_URL}
+
+RUN unzip besu*.zip -d ${APP_DIR} \
+    && ln -s ${APP_DIR}/besu*/bin/besu ${BIN}/besu
+
+RUN unzip teku*.zip -d ${APP_DIR} \
+    && ln -s ${APP_DIR}/teku*/bin/teku ${BIN}/teku
+
+WORKDIR ${WORK_DIR}
 
 COPY . .
 
