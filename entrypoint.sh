@@ -19,6 +19,8 @@ BESU() {
     echo "Starting BESU, network: $1, data: $2"
     besu \
         --network=$1 \
+        --sync-mode=X_SNAP \
+        --data-storage-format=BONSAI \
         --rpc-http-enabled=true \
         --rpc-http-host=0.0.0.0 \
         --rpc-http-cors-origins="*" \
@@ -42,7 +44,6 @@ TEKU() {
     --data-base-path=$2 \
     --ee-jwt-secret-file=$3 \
     --metrics-enabled=true \
-    --rest-api-enabled=true \
     --ignore-weak-subjectivity-period-enabled
 }
 
