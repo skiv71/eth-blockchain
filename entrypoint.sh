@@ -1,9 +1,7 @@
 #!/bin/bash
 
 JWT_FILE="jwtsecret.hex"
-JAVA_HOME=/usr/lib/jvm/default-java/
-
-export JAVA_HOME=$JAVA_HOME
+JAVA_HOME=
 
 ERROR() {
     echo $1
@@ -63,6 +61,12 @@ MAIN() {
             ;;
     esac
 }
+
+JAVA_HOME=`find / -type d -name jdk* 2> /dev/null | head -n 1`
+
+[[ -n $JAVA_HOME ]] && echo "JAVA_HOME: $JAVA_HOME" || ERROR "Empty JAVA_HOME ENV!"
+
+export JAVA_HOME=$JAVA_HOME
 
 [[ -n $DATA_DIR ]] || ERROR "Empty DATA_DIR ENV!"
 
