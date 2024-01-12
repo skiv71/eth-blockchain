@@ -30,6 +30,7 @@ NETHERMIND() {
         --config $1 \
         --datadir $2 \
         --HealthChecks.Enabled true \
+        --JsonRpc.Host "0.0.0.0" \
         --JsonRpc.JwtSecretFile $3 &
 }
 
