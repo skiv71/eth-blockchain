@@ -13,36 +13,24 @@ SECRET() {
     openssl rand -hex 32 | tr -d "\n" > $1
 }
 
-BESU() {
-    echo "Starting BESU, network: $1, data: $2"
-    besu \
-        --network=$1 \
-        --sync-mode=X_SNAP \
-        --data-storage-format=BONSAI \
-        --rpc-http-enabled=true \
-        --rpc-http-host=0.0.0.0 \
-        --rpc-http-cors-origins="*" \
-        --rpc-ws-enabled=true \
-        --rpc-ws-host=0.0.0.0 \
-        --host-allowlist="*" \
-        --engine-host-allowlist="*" \
-        --engine-rpc-enabled \
-        --data-path=$2 \
-        --engine-jwt-secret=$3 &
-    while ! netcat -z localhost 8545; do
-        sleep 1
-    done
-}
-
 TEKU() {
-    echo "Starting TEKU, network: $1, data: $2"
+    local data=$2/$1
+    echo "Starting TEKU, network: $1, data: $data, secret: $3, checkpoint: $4"
     teku \
     --network=$1 \
     --ee-endpoint=http://localhost:8551 \
-    --data-base-path=$2 \
+    --data-base-path=$data \
     --ee-jwt-secret-file=$3 \
-    --metrics-enabled=true \
-    --ignore-weak-subjectivity-period-enabled
+    --checkpoint-sync-url=$4 \
+    --metrics-enabled=true
+}
+
+NETHERMIND() {
+    echo "Starting NETHERMIND, network: $1, data: $2, secret: $3"
+    nethermind \
+        --config $1 \
+        --datadir $2 \
+        --JsonRpc.JwtSecretFile $3 &
 }
 
 MKDIR() {
@@ -50,16 +38,34 @@ MKDIR() {
     mkdir -p $1
 }
 
-MAIN() {
+CHECKPOINT_URL() {
     case $1 in
         "goerli")
-            BESU $1 $2/besu $3
-            TEKU $1 $2/teku $3
+            echo "https://beaconstate-goerli.chainsafe.io/"
+            ;;
+        "sepolia")
+            echo "https://beaconstate-sepolia.chainsafe.io/"
+            ;;
+        "gnosis")
+            echo "https://checkpoint.gnosischain.com/"
             ;;
         *)
-            ERROR "Invalid ETH_NETWORK: $1!"
+            ERROR "Invalid network: $1!"
             ;;
     esac
+}
+
+MAIN() {
+    local url=`CHECKPOINT_URL $1`
+    local checkpoint=${ETH_CHECKPOINT:=$url}
+    NETHERMIND $1 $2/nethermind $3
+    local n=0
+    while ! netcat -z localhost 8545; do
+        sleep 1
+        ((n++))
+        [[ $n -gt 30 ]] && ERROR "RPC Server timeout!"
+    done
+    TEKU $1 $2/teku $3 $checkpoint
 }
 
 JAVA_HOME=`find / -type d -name jdk* 2> /dev/null | head -n 1`
@@ -70,7 +76,7 @@ export JAVA_HOME=$JAVA_HOME
 
 [[ -n $DATA_DIR ]] || ERROR "Empty DATA_DIR ENV!"
 
-[[ -d $DATA_DIR ]] && echo "Using DATA_DIR: $DATA_DIR..." || MKDIR $DATA_DIR 
+[[ -d $DATA_DIR ]] && echo "Using DATA_DIR: $DATA_DIR..." || MKDIR $DATA_DIR
 
 JWT_PATH=$DATA_DIR/$JWT_FILE
 
