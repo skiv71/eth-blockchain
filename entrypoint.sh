@@ -14,12 +14,11 @@ SECRET() {
 }
 
 TEKU() {
-    local data=$2/$1
-    echo "Starting TEKU, network: $1, data: $data, secret: $3, checkpoint: $4"
+    echo "Starting TEKU, network: $1, data: $2, secret: $3, checkpoint: $4"
     teku \
     --network=$1 \
     --ee-endpoint=http://localhost:8551 \
-    --data-base-path=$data \
+    --data-base-path=$2 \
     --ee-jwt-secret-file=$3 \
     --checkpoint-sync-url=$4 \
     --metrics-enabled=true
