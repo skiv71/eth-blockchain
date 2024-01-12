@@ -29,6 +29,7 @@ NETHERMIND() {
     nethermind \
         --config $1 \
         --datadir $2 \
+        --HealthChecks.Enabled true \
         --JsonRpc.JwtSecretFile $3 &
 }
 
