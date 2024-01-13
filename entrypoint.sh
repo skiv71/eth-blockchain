@@ -32,7 +32,7 @@ NETHERMIND() {
         --datadir $2 \
         --HealthChecks.Enabled true \
         --JsonRpc.Host "0.0.0.0" \
-        --Sync.SnapSync $sync \
+        --Sync.SnapSync $snap \
         --JsonRpc.JwtSecretFile $3 &
 }
 
@@ -61,10 +61,10 @@ CHECKPOINT_URL() {
 SNAP_SYNC() {
     case $1 in
         "goerli"|"sepolia")
-            echo true
+            echo "true"
             ;;
         *)
-            echo false
+            echo "false"
             ;;
     esac
 }
