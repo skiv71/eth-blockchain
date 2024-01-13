@@ -25,12 +25,14 @@ TEKU() {
 }
 
 NETHERMIND() {
-    echo "Starting NETHERMIND, network: $1, data: $2, secret: $3"
+    local sync=`SNAP_SYNC $1`
+    echo "Starting NETHERMIND, network: $1, data: $2, secret: $3, snap: $snap"
     nethermind \
         --config $1 \
         --datadir $2 \
         --HealthChecks.Enabled true \
         --JsonRpc.Host "0.0.0.0" \
+        --Sync.SnapSync $sync \
         --JsonRpc.JwtSecretFile $3 &
 }
 
@@ -52,6 +54,17 @@ CHECKPOINT_URL() {
             ;;
         *)
             ERROR "Invalid network: $1!"
+            ;;
+    esac
+}
+
+SNAP_SYNC() {
+    case $1 in
+        "goerli|sepolia")
+            echo true
+            ;;
+        *)
+            echo false
             ;;
     esac
 }
