@@ -6,6 +6,7 @@ ENV DATA_DIR=/data
 ENV ETH_NETWORK=
 # (Optional)
 ENV ETH_CHECKPOINT=
+ENV RPC_TIMEOUT=
 
 # Build ENV
 ENV DEBIAN_FRONTEND=noninteractive

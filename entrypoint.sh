@@ -72,12 +72,13 @@ SNAP_SYNC() {
 MAIN() {
     local url=`CHECKPOINT_URL $1`
     local checkpoint=${ETH_CHECKPOINT:=$url}
+    local rpc_timeout=${RPC_TIMEOUT:=300}
     NETHERMIND $1 $2/nethermind $3
     local n=0
     while ! netcat -z localhost 8545; do
         sleep 1
         ((n++))
-        [[ $n -gt 30 ]] && ERROR "RPC Server timeout!"
+        [[ $n -gt $RPC_TIMEOUT ]] && ERROR "RPC Server timeout!"
     done
     TEKU $1 $2/teku $3 $checkpoint
 }
