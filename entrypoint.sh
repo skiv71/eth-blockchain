@@ -25,7 +25,7 @@ TEKU() {
 }
 
 NETHERMIND() {
-    local sync=`SNAP_SYNC $1`
+    local snap=`SNAP_SYNC $1`
     echo "Starting NETHERMIND, network: $1, data: $2, secret: $3, snap: $snap"
     nethermind \
         --config $1 \
@@ -60,7 +60,7 @@ CHECKPOINT_URL() {
 
 SNAP_SYNC() {
     case $1 in
-        "goerli|sepolia")
+        "goerli"|"sepolia")
             echo true
             ;;
         *)
@@ -73,6 +73,7 @@ MAIN() {
     local url=`CHECKPOINT_URL $1`
     local checkpoint=${ETH_CHECKPOINT:=$url}
     local rpc_timeout=${RPC_TIMEOUT:=300}
+    echo "RPC_TIMEOUT: $rpc_timeout"
     NETHERMIND $1 $2/nethermind $3
     local n=0
     while ! netcat -z localhost 8545; do
