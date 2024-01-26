@@ -1,48 +1,80 @@
 #!/bin/bash
 
+# envs
+# CHAIN_ID=
+
+# vars
 JWT_FILE="jwtsecret.hex"
-JAVA_HOME=
 
-ERROR() {
-    echo $1
-    exit 1
-}
-
-SECRET() {
-    echo "Generating secret: $1"
-    openssl rand -hex 32 | tr -d "\n" > $1
-}
-
-TEKU() {
-    echo "Starting TEKU, network: $1, data: $2, secret: $3, checkpoint: $4"
+# functions
+consensus_client() {
+    local chain="$1"
+    local data="$2"
+    local secret="$3"
+    local checkpoint="$4"
+    echo "Starting TEKU..."
+    echo -e "\tchain:\t\t${chain}"
+    echo -e "\tdata:\t\t${data}"
+    echo -e "\tsecret:\t\t${secret}"
+    echo -e "\tcheckpoint:\t${checkpoint}"
     teku \
-    --network=$1 \
+    --network="$chain" \
     --ee-endpoint=http://localhost:8551 \
-    --data-base-path=$2 \
-    --ee-jwt-secret-file=$3 \
-    --checkpoint-sync-url=$4 \
+    --data-base-path="$data" \
+    --ee-jwt-secret-file="$secret" \
+    --checkpoint-sync-url="$checkpoint" \
     --metrics-enabled=true
 }
 
-NETHERMIND() {
-    local snap=`SNAP_SYNC $1`
-    echo "Starting NETHERMIND, network: $1, data: $2, secret: $3, snap: $snap"
+error() {
+    echo "$1"
+    exit 1
+}
+
+execution_client() {
+    local chain="$1"
+    local data="$2"
+    local secret="$3"
+    local snap=
+    snap=$(get_snap_sync "$chain")
+    echo "Starting NETHERMIND..."
+    echo -e "\tchain:\t\t${chain}"
+    echo -e "\tdata:\t\t${data}"
+    echo -e "\tsecret:\t\t${secret}"
+    echo -e "\tsnap-sync:\t${snap}"
     nethermind \
-        --config $1 \
-        --datadir $2 \
+        --config "$chain" \
+        --datadir "$data" \
         --HealthChecks.Enabled true \
         --JsonRpc.Host "0.0.0.0" \
-        --Sync.SnapSync $snap \
-        --JsonRpc.JwtSecretFile $3 &
+        --Sync.SnapSync "$snap" \
+        --JsonRpc.JwtSecretFile "$secret" &
 }
 
-MKDIR() {
-    echo "Creating $1..."
-    mkdir -p $1
+get_chain_name() {
+    local chain_id="$1"
+    case "$chain_id" in
+        "0")
+            echo "mainnet"
+            ;;
+        "11155111")
+            echo "sepolia"
+            ;;
+        "5")
+            echo "goerli"
+            ;;
+        "100")
+            echo "gnosis"
+            ;;
+    esac
 }
 
-CHECKPOINT_URL() {
-    case $1 in
+get_checkpoint_url() {
+    local chain="$1"
+    case "$chain" in
+        "mainnet")
+            echo "https://beaconstate.info/"
+            ;;
         "goerli")
             echo "https://beaconstate-goerli.chainsafe.io/"
             ;;
@@ -52,15 +84,19 @@ CHECKPOINT_URL() {
         "gnosis")
             echo "https://checkpoint.gnosischain.com/"
             ;;
-        *)
-            ERROR "Invalid network: $1!"
-            ;;
     esac
 }
 
-SNAP_SYNC() {
-    case $1 in
-        "goerli"|"sepolia")
+generate_secret() {
+    local secret="$1"
+    echo "Generating secret: ${secret}"
+    openssl rand -hex 32 | tr -d "\n" > "$secret"
+}
+
+get_snap_sync() {
+    local chain="$1"
+    case "$chain" in
+        "goerli"|"sepolia"|"mainnet")
             echo "true"
             ;;
         *)
@@ -69,33 +105,53 @@ SNAP_SYNC() {
     esac
 }
 
-MAIN() {
-    local url=`CHECKPOINT_URL $1`
-    local checkpoint=${ETH_CHECKPOINT:=$url}
+mk_dir() {
+    echo "Creating $1..."
+    mkdir -p "$1"
+}
+
+main() {
+    local chain="$1"
+    local data="$2"
+    local secret="$3"
+    local checkpoint=${CHECKPOINT_URL:="$(get_checkpoint_url "$chain")"}
+    [[ -n "$checkpoint" ]] || error "Null checkpoint!"
     local rpc_timeout=${RPC_TIMEOUT:=300}
     echo "RPC_TIMEOUT: $rpc_timeout"
-    NETHERMIND $1 $2/nethermind $3
+    execution_client "$chain" "${data}/nethermind" "$secret"
     local n=0
     while ! netcat -z localhost 8545; do
         sleep 1
         ((n++))
-        [[ $n -gt $RPC_TIMEOUT ]] && ERROR "RPC Server timeout!"
+        [[ $n -gt $RPC_TIMEOUT ]] && error "RPC Server timeout!"
     done
-    TEKU $1 $2/teku $3 $checkpoint
+    consensus_client "$chain" "${data}/teku" "$secret" "$checkpoint"
 }
 
-JAVA_HOME=`find / -type d -name jdk* 2> /dev/null | head -n 1`
+# start
 
-[[ -n $JAVA_HOME ]] && echo "JAVA_HOME: $JAVA_HOME" || ERROR "Empty JAVA_HOME ENV!"
+JAVA_HOME_PATH=$(find / -type d -name "jdk*" 2> /dev/null | head -n 1)
 
-export JAVA_HOME=$JAVA_HOME
+[[ -n $JAVA_HOME_PATH ]] || error "Unable to determine JAVA_HOME!"
 
-[[ -n $DATA_DIR ]] || ERROR "Empty DATA_DIR ENV!"
+echo "JAVA_HOME: ${JAVA_HOME_PATH}"
 
-[[ -d $DATA_DIR ]] && echo "Using DATA_DIR: $DATA_DIR..." || MKDIR $DATA_DIR
+export JAVA_HOME=$JAVA_HOME_PATH
+
+[[ -n $DATA_DIR ]] || error "Empty DATA_DIR ENV!"
+
+[[ -d $DATA_DIR ]] || mk_dir "$DATA_DIR"
 
 JWT_PATH=$DATA_DIR/$JWT_FILE
 
-[[ -f $JWT_PATH ]] || SECRET $JWT_PATH
+[[ -f $JWT_PATH ]] || generate_secret "$JWT_PATH"
 
-MAIN $ETH_NETWORK $DATA_DIR $JWT_PATH
+[[ -n "$CHAIN_ID" ]] || error "Empty CHAIN_ID ENV!"
+
+chain=$(get_chain_name "$CHAIN_ID")
+
+[[ -n "$chain" ]] || error "Invalid CHAIN_ID: ${CHAIN_ID}!"
+
+echo "Chain, id: ${CHAIN_ID}, name: ${chain}"
+
+main "$chain" "$DATA_DIR" "$JWT_PATH"

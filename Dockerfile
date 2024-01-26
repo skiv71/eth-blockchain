@@ -1,13 +1,5 @@
 FROM debian:12-slim
 
-# Runtime ENV
-ENV DATA_DIR=/data
-# (Required)
-ENV ETH_NETWORK=
-# (Optional)
-ENV ETH_CHECKPOINT=
-ENV RPC_TIMEOUT=
-
 # Build ENV
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
@@ -27,9 +19,9 @@ COPY .resources/apt.txt .
 
 # Install dependencies
 
-RUN apt-get update >/dev/null && \
-    apt-get install -y --no-install-recommends `cat apt.txt | tr "\n" " "` &>/dev/null && \
-    apt-get clean
+RUN apt-get update >/dev/null \
+    && apt-get install -y --no-install-recommends `cat apt.txt | tr "\n" " "` \
+    && apt-get clean
 
 COPY .resources/wget.txt .
 
@@ -45,6 +37,16 @@ RUN unzip teku*.zip -d ${APP_DIR} \
 
 RUN unzip nether*.zip -d ${APP_DIR}/Nethermind \
     && ln -s ${APP_DIR}/Nethermind/nethermind ${BIN}/nethermind
+
+# Runtime ENV
+ENV DATA_DIR=/data
+
+# (Required)
+ENV CHAIN_ID=5
+
+# (Optional)
+ENV CHECKPOINT_URL=
+ENV RPC_TIMEOUT=
 
 # Ports
 EXPOSE 8545
